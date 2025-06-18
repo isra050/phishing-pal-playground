@@ -12,6 +12,7 @@ import Simulation from "./pages/Simulation";
 import Education from "./pages/Education";
 import AuthForm from "./components/AuthForm";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -25,7 +26,14 @@ const App = () => (
               <Navbar />
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/simulation" element={<Simulation />} />
+                <Route 
+                  path="/simulation" 
+                  element={
+                    <ProtectedRoute>
+                      <Simulation />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route path="/education" element={<Education />} />
                 <Route path="/login" element={<AuthForm type="login" />} />
                 <Route path="/register" element={<AuthForm type="register" />} />

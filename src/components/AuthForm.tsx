@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,7 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const { t } = useLanguage();
-  const { login, register, loginWithProvider } = useAuth();
+  const { login, register, loginWithProvider, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -28,6 +28,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     confirmPassword: '',
     name: ''
   });
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      navigate('/');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const triggerHackingEffect = () => {
     setHackingEffect(true);
@@ -60,7 +67,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         triggerHackingEffect();
         toast({
           title: "🎯 ¡Registro Exitoso!",
-          description: "Bienvenido al Sistema de Entrenamiento PhishingEdu"
+          description: "Bienvenido al Sistema de Entrenamiento PhishingEdu. Revisa tu email para confirmar tu cuenta."
         });
       } else {
         await login(formData.email, formData.password);
@@ -70,11 +77,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           description: "Sistema comprometido... ¡Bienvenido de nuevo!"
         });
       }
-      navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Auth error:', error);
       toast({
         title: "🚫 Acceso Denegado",
-        description: "Credenciales inválidas. Intenta de nuevo.",
+        description: error.message || "Error en la autenticación. Intenta de nuevo.",
         variant: "destructive"
       });
     } finally {
@@ -91,17 +98,28 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         title: "🌐 ¡Conexión Establecida!",
         description: `Infiltración exitosa vía ${provider}`
       });
-      navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Provider login error:', error);
       toast({
         title: "🔒 Conexión Fallida",
-        description: `No se pudo establecer conexión con ${provider}`,
+        description: error.message || `No se pudo establecer conexión con ${provider}`,
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-400 mx-auto mb-4"></div>
+          <p className="text-green-400 font-mono text-xl">VERIFICANDO_ESTADO...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4 relative overflow-hidden">

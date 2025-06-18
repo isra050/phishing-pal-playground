@@ -1,13 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   loginWithProvider: (provider: string) => Promise<void>;
@@ -20,29 +18,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Validación básica
       if (!email || !password) {
         throw new Error('Email y contraseña son requeridos');
       }
-      
-      // Simulación de login con validación
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulación de validación de credenciales
-      if (password.length < 3) {
-        throw new Error('Credenciales inválidas');
-      }
-      
-      setUser({
-        id: '1',
+
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0]
+        password,
       });
+
+      if (error) throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +64,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      // Validación de registro
       if (!email || !password || !name) {
         throw new Error('Todos los campos son requeridos');
       }
@@ -63,15 +75,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!email.includes('@')) {
         throw new Error('Email inválido');
       }
-      
-      // Simulación de registro
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setUser({
-        id: '1',
+
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { error } = await supabase.auth.signUp({
         email,
-        name
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name: name,
+          },
+        },
       });
+
+      if (error) throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Error al registrarse');
     } finally {
       setIsLoading(false);
     }
@@ -80,25 +100,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithProvider = async (provider: string) => {
     setIsLoading(true);
     try {
-      // Simulación de login con proveedor externo
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setUser({
-        id: '1',
-        email: `user@${provider.toLowerCase()}.com`,
-        name: `Usuario de ${provider}`
+      const redirectUrl = `${window.location.origin}/`;
+      
+      let oauthProvider: any;
+      switch (provider.toLowerCase()) {
+        case 'google':
+          oauthProvider = 'google';
+          break;
+        case 'facebook':
+          oauthProvider = 'facebook';
+          break;
+        case 'twitter':
+          oauthProvider = 'twitter';
+          break;
+        case 'github':
+          oauthProvider = 'github';
+          break;
+        default:
+          throw new Error(`Proveedor ${provider} no soportado`);
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: oauthProvider,
+        options: {
+          redirectTo: redirectUrl,
+        },
       });
+
+      if (error) throw error;
+    } catch (error: any) {
+      throw new Error(error.message || `Error al conectar con ${provider}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
+      user,
+      session,
       login, 
       register, 
       loginWithProvider, 
