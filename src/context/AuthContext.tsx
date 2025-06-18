@@ -20,35 +20,76 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
-    // Simulación de login
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({
-      id: '1',
-      email,
-      name: email.split('@')[0]
-    });
+    setIsLoading(true);
+    try {
+      // Validación básica
+      if (!email || !password) {
+        throw new Error('Email y contraseña son requeridos');
+      }
+      
+      // Simulación de login con validación
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulación de validación de credenciales
+      if (password.length < 3) {
+        throw new Error('Credenciales inválidas');
+      }
+      
+      setUser({
+        id: '1',
+        email,
+        name: email.split('@')[0]
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const register = async (email: string, password: string, name: string) => {
-    // Simulación de registro
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({
-      id: '1',
-      email,
-      name
-    });
+    setIsLoading(true);
+    try {
+      // Validación de registro
+      if (!email || !password || !name) {
+        throw new Error('Todos los campos son requeridos');
+      }
+      
+      if (password.length < 6) {
+        throw new Error('La contraseña debe tener al menos 6 caracteres');
+      }
+      
+      if (!email.includes('@')) {
+        throw new Error('Email inválido');
+      }
+      
+      // Simulación de registro
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setUser({
+        id: '1',
+        email,
+        name
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const loginWithProvider = async (provider: string) => {
-    // Simulación de login con proveedor
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setUser({
-      id: '1',
-      email: `user@${provider}.com`,
-      name: `Usuario de ${provider}`
-    });
+    setIsLoading(true);
+    try {
+      // Simulación de login con proveedor externo
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setUser({
+        id: '1',
+        email: `user@${provider.toLowerCase()}.com`,
+        name: `Usuario de ${provider}`
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
@@ -62,7 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       register, 
       loginWithProvider, 
       logout, 
-      isAuthenticated: !!user 
+      isAuthenticated: !!user,
+      isLoading 
     }}>
       {children}
     </AuthContext.Provider>
